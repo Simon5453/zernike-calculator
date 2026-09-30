@@ -285,11 +285,23 @@ if st.session_state['batch_result'] is not None:
         
         # 4. 在真实垂直中心处放置右侧 "n, l" 组合文本
         
-              # 修复：直接生成唯一的正绝对值（如 n=4 时生成 [4, 2]；n=3 时生成 [3, 1]），避开重复
-        unique_abs_l = list(range(n, 0, -2))  # 从 n 递减到 1，步长为 -2
-        
-        # 修复：构建右侧显示的 n, l 组合文本
-        n_l_str = f"n={n}, l=±{', ±'.join(map(str, unique_abs_l))}" if n > 0 else "n=0, l=0"
+                    # 构建右侧显示的 n, l 组合文本
+        if n == 0:
+            n_l_str = "n=0, l=0"  # 第0行特殊处理
+        else:
+            # 获取所有可能的非零绝对值（如 n=4 -> [4, 2]）
+            unique_abs_l = list(range(n, 0, -2))
+            # 格式化为 ±数字 的形式
+            l_terms = [f"±{v}" for v in unique_abs_l]
+            
+            # 修复：如果 n 是偶数，说明包含 l=0 的情况
+            if n % 2 == 0:
+                l_terms.append("0")
+                # 调整显示顺序，变成 l=0, ±2, ±4 这种更符合数学直觉的排列
+                l_terms.reverse()
+                
+            # 拼接最终的字符串
+            n_l_str = f"n={n}, l={', '.join(l_terms)}"
         
         fig.text(0.98, row_y_center, n_l_str, fontsize=10, va='center', ha='right')
             
