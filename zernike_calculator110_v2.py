@@ -20,7 +20,7 @@ def get_radial_string(n, m):
         numerator = ((-1) ** s) * math.factorial(n - s)  # 计算分子：(-1)^s * (n-s)!
         denominator = math.factorial(s) * math.factorial(m - s) * math.factorial(n - m - s)  # 计算分母：s! * (m-s)! * (n-m-s)!
         coef = int(numerator / denominator)  # 计算系数并转换为整数
-        power = n - 2 * s  # 计算 rho 的指数：n - 2s
+        power = n - 2 * s                    # 计算 rho 的指数：n - 2s
         terms.append((coef, power))  # 将系数和指数组成的元组加入列表
         
     for i, (coef, power) in enumerate(terms):  # 遍历所有项，构建代数表达式
@@ -89,12 +89,21 @@ if st.button("开始计算并绘图", type="primary"):  # 点击按钮触发计�
             # 展示用 n,m 表示的通式
             st.latex(r"Z_n^{n-2m}(\rho, \theta) = R_n^{n-2m}(\rho) \cdot \begin{cases} \sin((n-2m)\theta) & n-2m > 0 \\ \cos((n-2m)\theta) & n-2m \le 0 \end{cases}")
             
-            if l > 0:  # 判断角向部分使用正弦还是余弦
-                angular_expr = f"sin({l}θ)"  # 角频率项为 sin(lθ)
-                full_expr = rf"Z_{{{n}}}^{{{l}}} = \left( {radial_expr} \right) \cdot {angular_expr}"  # 拼接具体表达式
-            else:  # 如果 n-2m ≤ 0 (即 l ≤ 0)
-                angular_expr = f"cos({abs(l)}θ)" if l < 0 else "1"  # 角频率项为 cos(|l|θ)，如果 l=0 则为 1
-                full_expr = rf"Z_{{{n}}}^{{{l}}} = \left( {radial_expr} \right) \cdot {angular_expr}"  # 拼接具体表达式
+                       # 根据 l 的值动态生成角频率项
+            if l == 1:  # 特判 l=1 的情况
+                angular_expr = "sin(θ)"  # 省略系数 1，直接写 sin(θ)
+            elif l == -1:  # 特判 l=-1 的情况
+                angular_expr = "cos(θ)"  # 省略系数 1，直接写 cos(θ)
+            elif l > 1:  # 如果 l 大于 1
+                angular_expr = f"sin({l}θ)"  # 正常显示 sin(lθ)
+            elif l < -1:  # 如果 l 小于 -1
+                angular_expr = f"cos({abs(l)}θ)"  # 正常显示 cos(|l|θ)
+            else:  # l = 0 的情况
+                angular_expr = "1"  # 角频率项为 1
+
+            # 拼接完整的泽尼克表达式
+            full_expr = rf"Z_{{{n}}}^{{{l}}} = \left( {radial_expr} \right) \cdot {angular_expr}"  
+                
             st.write("代入n,l后的泽尼克表达式为：")  # 提示文本
             st.latex(full_expr)  # 渲染特定公式
             
