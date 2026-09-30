@@ -75,99 +75,8 @@ with col2:
     l_input = st.text_input("请输入 l (角频率，如 0, ±1, ±2, ±3, ±4 等整数):", value="2")  # l 的输入框
 
 # 单击单阶计算按钮时的逻辑
-if st.button("开始计算并绘图", type="primary", key="btn_single"):  # 点击按钮触发计算
-    try:
-        n = int(n_input.strip())  # 获取并转换 n 为整数
-        l = int(l_input.strip())  # 获取并转换 l 为整数
-        
-        # 校验参数合法性
-        if abs(l) > n or (n - l) % 2 != 0:
-            st.error("n、l 只能取整数值；n、l应该同奇偶；且l≤n.请重新输入")  # 提示错误
-        else:
-            # 计算所有需要的数据
-            m = (n - abs(l)) // 2  # 计算 m 值，使用绝对值防止负数阶乘报错
-            
-            # 生成极坐标网格数据
-            rho = np.linspace(0, 1, 200)  # 径向坐标
-            theta = np.linspace(0, 2 * np.pi, 200)  # 角向坐标
-            R, T = np.meshgrid(rho, theta)  # 生成网格坐标矩阵
-            
-            R_val = get_radial_value(n, m, R)  # 计算径向多项式
-            T_val = np.sin(l * T) if l > 0 else np.cos(abs(l) * T)  # 角向部分
-            Z = R_val * T_val  # 计算完整的 Zernike 数值矩阵
-            
-            X = R * np.cos(T)  # 极坐标转直角坐标 X
-            Y = R * np.sin(T)  # 极坐标转直角坐标 Y
-            
-            # 动态生成角频率项
-            if l == 1: angular_expr = "sin(θ)"
-            elif l == -1: angular_expr = "cos(θ)"
-            elif l > 1: angular_expr = f"sin({l}θ)"
-            elif l < -1: angular_expr = f"cos({abs(l)}θ)"
-            else: angular_expr = "1"
-            
-            # 构建表达式字符串
-            radial_expr = get_radial_string(n, m)  # 获取径向表达式
-            full_expr = rf"Z_{{{n}}}^{{{l}}} = \left( {radial_expr} \right) \cdot {angular_expr}"  # 拼接完整表达式
-            
-            # 将计算结果打包存入状态，供每次页面重绘时使用
-            st.session_state['single_result'] = {
-                'n': n, 'l': l, 'm': m,
-                'radial_expr': radial_expr,
-                'full_expr': full_expr,
-                'X': X, 'Y': Y, 'Z': Z
-            }
-                
-    except ValueError:
-        st.error("n、l 只能取整数值；n、l应该同奇偶；且l≤n.请重新输入")  # 输入非整数时的错误提示
-
-# 渲染单阶计算结果（不管按钮状态如何，只要状态里有结果就渲染）
-if st.session_state['single_result'] is not None:
-    res = st.session_state['single_result']  # 从状态中取出结果
-    st.write(f"### 您现在输入的 n = {res['n']}, l = {res['l']}, 对应的 m = {res['m']}")  # 输出基本信息
-    
-    st.write("### 径向表达式为：")  # 径向表达式标题
-    st.latex(r"R_n^l(\rho) = \sum_{s=0}^{(n-|l|)/2} \frac{(-1)^s (n-s)!}{s! \left(\frac{n+|l|}{2}-s\right)! \left(\frac{n-|l|}{2}-s\right)!} \rho^{n-2s}")  # 展示通式
-    st.write("代入 n, l 后的表达式为：")  # 提示文本
-    st.latex(rf"R_{{{res['n']}}}^{{{res['l']}}}(\rho) = {res['radial_expr']}")  # 渲染特定表达式
-    
-    st.write("### 泽尼克多项式为：")  # 泽尼克多项式标题
-    st.latex(r"Z_n^l(\rho, \theta) = R_n^l(\rho) \cdot \begin{cases} \sin(|l|\theta) & l > 0 \\ \cos(|l|\theta) & l \le 0 \end{cases}")  # n,l通式
-    st.write("代入 n, l 后的表达式为：")  # 提示文本
-    st.latex(res['full_expr'])  # 渲染特定公式
-    
-    st.write("### Zernike 多项式二维图像")  # 二维图标题
-    col_2d_1, col_2d_2, col_2d_3 = st.columns([1, 1.5, 1])  # 利用列布局居中
-    with col_2d_2:
-        fig2d, ax = plt.subplots(figsize=(4.5, 4.5))  # 创建图像
-        ax.set_title(f"n = {res['n']}, l = {res['l']}", fontsize=14, pad=15)  # 标题
-        mesh = ax.pcolormesh(res['X'], res['Y'], res['Z'], cmap='jet', shading='auto', vmin=-np.max(np.abs(res['Z'])), vmax=np.max(np.abs(res['Z'])))  # 绘图
-        cbar = fig2d.colorbar(mesh, ax=ax, fraction=0.03, pad=0.04)  # 颜色条
-        cbar.set_label('Z Value', fontsize=10)  # 标签
-        circle = plt.Circle((0, 0), 1, color='black', fill=False, linewidth=1)  # 边界圆
-        ax.add_artist(circle)  # 添加圆
-        ax.set_aspect('equal')  # 等比例
-        ax.axis('off')  # 隐藏坐标轴
-        st.pyplot(fig2d)  # 渲染图像
-
-    st.write("### Zernike 多项式三维图像")  # 三维图标题
-    col_3d_1, col_3d_2, col_3d_3 = st.columns([1, 1.5, 1])  # 居中
-    with col_3d_2:
-        fig3d = go.Figure(data=[go.Surface(x=res['X'], y=res['Y'], z=res['Z'], colorscale='Jet', colorbar=dict(title='Z Value', len=0.6, thickness=15), showscale=True)])  # 三维图
-        fig3d.update_layout(title=f"n = {res['n']}, l = {res['l']}", scene=dict(xaxis_title='X', yaxis_title='Y', zaxis_title='Z', aspectmode='manual', aspectratio=dict(x=1, y=1, z=0.8)), margin=dict(l=0, r=0, b=0, t=30))  # 布局
-        st.plotly_chart(fig3d, use_container_width=True)  # 渲染三维图
-
-# ================= 第二部分：指定阶数 N 批量生成 =================
-
-st.markdown("---")  # 分割线
-st.header("n阶泽尼克批量生成")  # 模块标题
-
-# 用户输入最大阶数 N，将最大值放宽到 15
-max_n = st.number_input("请输入阶数 n（将计算 0 到 n 阶的所有 Zernike 多项式，最高支持15阶，计算量较大）:", min_value=0, max_value=15, value=4, step=1)  # 输入最大阶数
-
 if st.button("生成 n 阶 Zernike 表格和图像", type="primary", key="btn_batch"):  # 触发批量生成
     with st.spinner('正在计算并绘制所有多项式，请稍候...'):  # 加载动画
-        
         # ---------- 1. 构建 HTML 表格 ----------
         colors = ["#FFFFCC", "#D9E1F2", "#FFF2CC", "#CCFFFF", "#E2F0D9", "#FCE4D6", "#DDEBF7", "#F4CCCC", "#E2EFDA", "#FCE4D6", "#DDEBF7", "#E2F0D9", "#F4CCCC", "#FFF2CC", "#D9E1F2", "#CCFFFF"]  # 颜色池
         
@@ -175,21 +84,20 @@ if st.button("生成 n 阶 Zernike 表格和图像", type="primary", key="btn_ba
         html_table = "<table style='width:100%; text-align:center; border-collapse: collapse; font-size: 16px;'>"
         html_table += "<tr style='background-color: #4B8BBE; color: white;'><th style='border: 1px solid black; padding: 8px;'>n</th><th style='border: 1px solid black; padding: 8px;'>m</th><th style='border: 1px solid black; padding: 8px;'>n-2m</th><th style='border: 1px solid black; padding: 8px;'>Zernike polynomial</th></tr>"
         
-                for n in range(max_n + 1):  # 遍历阶数 n
+        for n in range(max_n + 1):  # 遍历阶数 n
             row_color = colors[n % len(colors)]  # 取颜色
             
-            # 修复：m 的取值范围必须是从 0 到 n，不能是 n//2
+            # 修复：m 的取值范围必须是从 0 到 n
             for m_val in range(n + 1):  
-                l_val = n - 2 * m_val  # 计算 l，此时会自然生成正数、零和负数
-                
+                l_val = n - 2 * m_val  # 计算 l，会自然生成正数、零和负数
                 radial_expr = get_radial_string(n, m_val)  # 获取径向表达式字符串
                 
-                # 修复：根据 l 的正负动态生成角频率项（处理 cos）
+                # 动态生成角频率项
                 if l_val == 1: angular_expr = "sinθ"
                 elif l_val == -1: angular_expr = "cosθ"
                 elif l_val > 1: angular_expr = f"sin({l_val}θ)"
                 elif l_val < -1: angular_expr = f"cos({abs(l_val)}θ)"
-                else: angular_expr = "1"  # l=0 的情况
+                else: angular_expr = "1"  # l=0
                 
                 # 替换常规字符为 HTML 数学格式
                 formatted_radial = radial_expr.replace("ρ²", "<i>ρ</i><sup>2</sup>").replace("ρ³", "<i>ρ</i><sup>3</sup>").replace("ρ⁴", "<i>ρ</i><sup>4</sup>").replace("ρ⁵", "<i>ρ</i><sup>5</sup>").replace("ρ⁶", "<i>ρ</i><sup>6</sup>")
@@ -197,9 +105,9 @@ if st.button("生成 n 阶 Zernike 表格和图像", type="primary", key="btn_ba
                 formatted_radial = re.sub(r'ρ(\d+)', r'<i>ρ</i><sup>\1</sup>', formatted_radial) # 替换所有上标
                 
                 if l_val != 0:
-                    zernike_str = f"({formatted_radial}) · {angular_expr}" # 拼接公式
+                    zernike_str = f"({formatted_radial}) · {angular_expr}"
                 else:
-                    zernike_str = formatted_radial # 拼接公式
+                    zernike_str = formatted_radial
                 
                 # 拼接 HTML
                 html_table += f"<tr style='background-color: {row_color};'>"
@@ -211,13 +119,10 @@ if st.button("生成 n 阶 Zernike 表格和图像", type="primary", key="btn_ba
         
         html_table += "</table>"  # 闭合表格
         
-        # 将表格 HTML 和绘图所需数据存入状态
-        st.session_state['batch_result'] = {
-            'max_n': max_n,
-            'html_table': html_table
-        }
+        # 将表格 HTML 存入状态
+        st.session_state['batch_result'] = {'max_n': max_n, 'html_table': html_table}
 
-# 渲染批量生成结果（表格和图像）
+# 渲染批量生成结果
 if st.session_state['batch_result'] is not None:
     res_batch = st.session_state['batch_result']  # 获取状态中的数据
     max_n = res_batch['max_n']  # 获取最大阶数
@@ -227,105 +132,83 @@ if st.session_state['batch_result'] is not None:
     
     st.write(f"### {max_n} 阶标准圆域 Zernike 图像金字塔")
     
-    # 设定网格尺寸：行数为 max_n + 2（顶部多留一行给坐标轴），列数为 2 * max_n + 1
+    # 设定网格尺寸
     rows = max_n + 2
     cols = 2 * max_n + 1
     
-    # 创建大画布，根据行列数调整大小，同时强制紧凑的边距
+    # 创建大画布
     fig, axes = plt.subplots(rows, cols, figsize=(cols * 1.2, rows * 1.2))  
-    fig.patch.set_facecolor('white')  # 设置背景色
-    
-    # 调整子图间距，top=0.82 预留顶部空间给横轴，wspace 和 hspace 设置很小值让其紧凑
+    fig.patch.set_facecolor('white')
     plt.subplots_adjust(left=0.05, right=0.95, top=0.82, bottom=0.05, wspace=0.05, hspace=0.05)
     
     # 准备极坐标网格数据
-    rho_grid = np.linspace(0, 1, 80)  # 径向坐标，图像多时减少点数避免卡顿
-    theta_grid = np.linspace(0, 2 * np.pi, 80)  # 角向坐标
-    R_grid, T_grid = np.meshgrid(rho_grid, theta_grid)  # 网格
+    rho_grid = np.linspace(0, 1, 80)
+    theta_grid = np.linspace(0, 2 * np.pi, 80)
+    R_grid, T_grid = np.meshgrid(rho_grid, theta_grid)
     
-    # 定义图像区域的上下边界，用于计算文本位置
-    plot_top = 0.82      # 子图区域的顶部
-    plot_bottom = 0.05   # 子图区域的底部
-    plot_height = plot_top - plot_bottom # 子图区域总高度
-    
-        # 遍历绘制所有子图
+    # 遍历绘制所有子图
     for n in range(max_n + 1):
-        # 1. 先绘制本行的所有图像
-        for l in range(-n, n + 1, 2):  # l 从 -n 到 n，步长为2
-            m_val = (n - abs(l)) // 2  # 计算 m
-            col_idx = max_n + l  # 计算列索引
+        # 先绘制本行的所有图像
+        for l in range(-n, n + 1, 2):
+            m_val = (n - abs(l)) // 2
+            col_idx = max_n + l
+            ax = axes[n][col_idx]
             
-            ax = axes[n][col_idx]  # 获取对应的子图 axes
+            R_val = get_radial_value(n, m_val, R_grid)
+            T_val = np.sin(l * T_grid) if l > 0 else np.cos(abs(l) * T_grid)
+            Z_vals = R_val * T_val
             
-            # 计算 Zernike 数值
-            R_val = get_radial_value(n, m_val, R_grid)  # 径向数值
-            T_val = np.sin(l * T_grid) if l > 0 else np.cos(abs(l) * T_grid)  # 角向
-            Z_vals = R_val * T_val  # 乘积
+            X_grid = R_grid * np.cos(T_grid)
+            Y_grid = R_grid * np.sin(T_grid)
             
-            X_grid = R_grid * np.cos(T_grid)  # X 坐标
-            Y_grid = R_grid * np.sin(T_grid)  # Y 坐标
-            
-            # 绘制彩色图
             ax.pcolormesh(X_grid, Y_grid, Z_vals, cmap='jet', shading='auto', vmin=-np.max(np.abs(Z_vals)), vmax=np.max(np.abs(Z_vals)))
             
-            # 绘制单位圆边框
             circle = plt.Circle((0, 0), 1, color='black', fill=False, linewidth=0.8)
             ax.add_artist(circle)
             
-            ax.set_aspect('equal')  # 等比例
-            ax.axis('off')  # 隐藏坐标轴
+            ax.set_aspect('equal')
+            ax.axis('off')
             
-        # 2. 本行图像绘制完成后，获取该行的真实垂直中心，用于放置文本，实现完美对齐
-        ax_ref = axes[n][max_n]  # 取该行中间列的子图作为参考（该位置肯定存在）
-        pos = ax_ref.get_position()  # 获取该子图框的边界位置 (x0, y0, width, height)
-        row_y_center = (pos.y0 + pos.y1) / 2  # 精确计算垂直中心坐标
+        # 获取该行第一个子图的真实垂直中心，用于放置文本
+        ax_ref = axes[n][0]
+        pos = ax_ref.get_position()
+        row_y_center = (pos.y0 + pos.y1) / 2
         
-        # 3. 在真实垂直中心处放置左侧 "Radial Order n" 文本
+        # 放置左侧 "Radial Order n" 文本
         fig.text(0.02, row_y_center, f"n={n}", fontsize=12, fontweight='bold', va='center')
         
-        # 4. 在真实垂直中心处放置右侧 "n, l" 组合文本
-        
-                    # 构建右侧显示的 n, l 组合文本
+        # 构建右侧 n, l 组合文本
         if n == 0:
-            n_l_str = "n=0, l=0"  # 第0行特殊处理
+            n_l_str = "n=0, l=0"
         else:
-            # 获取所有可能的非零绝对值（如 n=4 -> [4, 2]）
             unique_abs_l = list(range(n, 0, -2))
-            # 格式化为 ±数字 的形式
             l_terms = [f"±{v}" for v in unique_abs_l]
-            
-            # 修复：如果 n 是偶数，说明包含 l=0 的情况
             if n % 2 == 0:
                 l_terms.append("0")
-                # 调整显示顺序，变成 l=0, ±2, ±4 这种更符合数学直觉的排列
                 l_terms.reverse()
-                
-            # 拼接最终的字符串
             n_l_str = f"n={n}, l={', '.join(l_terms)}"
         
+        # 放置右侧 "n, l" 文本
         fig.text(0.98, row_y_center, n_l_str, fontsize=10, va='center', ha='right')
-            
-       # 隐藏没有对应多项式的空格子
-    for n in range(rows):  # 修复：这里改为遍历所有行，包含多余出来的最后一行
+    
+    # 隐藏多余空格子
+    for n in range(rows):
         for col in range(cols):
-            if n > max_n:  # 修复：如果当前行索引已经超出了 max_n（即刚才为了放横轴而多出来的那一行）
-                axes[n][col].axis('off')  # 直接隐藏
-                continue  # 跳过后续判断
-            
+            if n > max_n:
+                axes[n][col].axis('off')
+                continue
             l_val = col - max_n
             if abs(l_val) > n or (n - l_val) % 2 != 0:
-                axes[n][col].axis('off')  # 隐藏对应不符合条件的空白子图
+                axes[n][col].axis('off')
                 
-    # 在顶部专门开辟一块区域绘制坐标轴，避免与图像重叠
-    ax_axis = fig.add_axes([0.05, 0.85, 0.90, 0.10])  # [左, 底, 宽, 高]
-    ax_axis.set_xlim(-max_n - 0.5, max_n + 0.5)  # 限制横轴范围
-    ax_axis.set_ylim(0, 1)  # 限制纵轴范围
-    ax_axis.axis('off')  # 隐藏边框
+    # 在顶部开辟区域绘制坐标轴
+    ax_axis = fig.add_axes([0.05, 0.85, 0.90, 0.10])
+    ax_axis.set_xlim(-max_n - 0.5, max_n + 0.5)
+    ax_axis.set_ylim(0, 1)
+    ax_axis.axis('off')
     
-    # 绘制主横线
+    # 绘制主横线和刻度
     ax_axis.plot([-max_n - 0.5, max_n + 0.5], [0.5, 0.5], color='blue', lw=2)
-    
-    # 绘制刻度和数值
     for l_val in range(-max_n, max_n + 1):
         ax_axis.plot([l_val, l_val], [0.45, 0.55], color='blue', lw=1.5)
         ax_axis.text(l_val, 0.6, str(l_val), ha='center', va='bottom', fontweight='bold', fontsize=10)
@@ -333,4 +216,4 @@ if st.session_state['batch_result'] is not None:
     # 添加横轴标题
     ax_axis.text(0, 1.1, "Angular Frequency, l = n - 2m", ha='center', va='bottom', color='blue', fontweight='bold', fontsize=12)
     
-    st.pyplot(fig)  # 将大图渲染到网页上
+    st.pyplot(fig)
