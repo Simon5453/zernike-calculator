@@ -284,8 +284,13 @@ if st.session_state['batch_result'] is not None:
         fig.text(0.02, row_y_center, f"n={n}", fontsize=12, fontweight='bold', va='center')
         
         # 4. 在真实垂直中心处放置右侧 "n, l" 组合文本
-        l_values = list(range(-n, n + 1, 2))
-        n_l_str = f"n={n}, l=±{', ±'.join(map(str, [abs(v) for v in l_values if v != 0]))}" if n > 0 else "n=0, l=0"
+        
+              # 修复：直接生成唯一的正绝对值（如 n=4 时生成 [4, 2]；n=3 时生成 [3, 1]），避开重复
+        unique_abs_l = list(range(n, 0, -2))  # 从 n 递减到 1，步长为 -2
+        
+        # 修复：构建右侧显示的 n, l 组合文本
+        n_l_str = f"n={n}, l=±{', ±'.join(map(str, unique_abs_l))}" if n > 0 else "n=0, l=0"
+        
         fig.text(0.98, row_y_center, n_l_str, fontsize=10, va='center', ha='right')
             
        # 隐藏没有对应多项式的空格子
