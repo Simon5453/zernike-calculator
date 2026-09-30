@@ -35,7 +35,7 @@ def get_radial_string(n, m):
         
         if power == 0: expression += str(abs_coef)  # 如果指数为0，只写系数（常数项）
         elif power == 1: expression += coef_str + "ρ"  # 如果指数为1，省略指数
-        else: expression += coef_str + f"ρ^{power}"  # 否则写出 ρ 的幂次
+        else: expression += coef_str + f"ρ^{{power}}"  # 否则写出 ρ 的幂次
             
     return expression  # 返回构建好的径向表达式字符串
 
