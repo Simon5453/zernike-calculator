@@ -175,26 +175,26 @@ if st.button("生成 n 阶 Zernike 表格和图像", type="primary", key="btn_ba
         html_table = "<table style='width:100%; text-align:center; border-collapse: collapse; font-size: 16px;'>"
         html_table += "<tr style='background-color: #4B8BBE; color: white;'><th style='border: 1px solid black; padding: 8px;'>n</th><th style='border: 1px solid black; padding: 8px;'>m</th><th style='border: 1px solid black; padding: 8px;'>n-2m</th><th style='border: 1px solid black; padding: 8px;'>Zernike polynomial</th></tr>"
         
-        for n in range(max_n + 1):  # 遍历阶数 n
+                for n in range(max_n + 1):  # 遍历阶数 n
             row_color = colors[n % len(colors)]  # 取颜色
-            m_max = n // 2  # m 的最大值
             
-            for m_val in range(m_max + 1):  # 遍历 m
-                l_val = n - 2 * m_val  # 计算 l
+            # 修复：m 的取值范围必须是从 0 到 n，不能是 n//2
+            for m_val in range(n + 1):  
+                l_val = n - 2 * m_val  # 计算 l，此时会自然生成正数、零和负数
+                
                 radial_expr = get_radial_string(n, m_val)  # 获取径向表达式字符串
                 
-                # 动态生成角频率项
+                # 修复：根据 l 的正负动态生成角频率项（处理 cos）
                 if l_val == 1: angular_expr = "sinθ"
                 elif l_val == -1: angular_expr = "cosθ"
                 elif l_val > 1: angular_expr = f"sin({l_val}θ)"
                 elif l_val < -1: angular_expr = f"cos({abs(l_val)}θ)"
-                else: angular_expr = "1"
+                else: angular_expr = "1"  # l=0 的情况
                 
-                # 替换常规字符为 HTML 数学格式，使其有 LaTeX 风格
-                formatted_radial = radial_expr.replace("ρ²", "<i>ρ</i><sup>2</sup>").replace("ρ³", "<i>ρ</i><sup>3</sup>").replace("ρ⁴", "<i>ρ</i><sup>4</sup>").replace("ρ⁵", "<i>ρ</i><sup>5</sup>").replace("ρ⁶", "<i>ρ</i><sup>6</sup>").replace("ρ⁷", "<i>ρ</i><sup>7</sup>").replace("ρ⁸", "<i>ρ</i><sup>8</sup>").replace("ρ⁹", "<i>ρ</i><sup>9</sup>") # 超过9的指数处理
-                if any(str(i) in formatted_radial for i in range(10, 20)): # 如果还有大于9的指数
-                    import re # 导入正则表达式
-                    formatted_radial = re.sub(r'ρ(\d+)', r'<i>ρ</i><sup>\1</sup>', formatted_radial) # 正则替换所有
+                # 替换常规字符为 HTML 数学格式
+                formatted_radial = radial_expr.replace("ρ²", "<i>ρ</i><sup>2</sup>").replace("ρ³", "<i>ρ</i><sup>3</sup>").replace("ρ⁴", "<i>ρ</i><sup>4</sup>").replace("ρ⁵", "<i>ρ</i><sup>5</sup>").replace("ρ⁶", "<i>ρ</i><sup>6</sup>")
+                import re # 导入正则表达式处理更多位数
+                formatted_radial = re.sub(r'ρ(\d+)', r'<i>ρ</i><sup>\1</sup>', formatted_radial) # 替换所有上标
                 
                 if l_val != 0:
                     zernike_str = f"({formatted_radial}) · {angular_expr}" # 拼接公式
