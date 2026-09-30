@@ -128,58 +128,63 @@ if st.button("开始计算并绘图", type="primary"):  # 点击按钮触发计�
             X = R * np.cos(T)  # X = ρ * cos(θ)
             Y = R * np.sin(T)  # Y = ρ * sin(θ)
             
-            # 利用 st.columns 将二维图和三维图并排显示
-            col_img1, col_img2 = st.columns([1, 1.2])  # 左侧放二维图，右侧放三维图，比例设为1:1.2
+                       # 第四行：Zernike 图像绘制（二维和三维上下分布，均居中显示）
             
-            # 左侧绘制二维伪彩色图
-            with col_img1:
-                fig2d, ax = plt.subplots(figsize=(5, 4.5))  # 创建二维图像对象和坐标轴
+            # --- 1. 绘制二维图像 ---
+            st.write("### Zernike 多项式二维图像")  # 二维图标题
+            # 使用三列布局（中间宽，两边窄）来实现二维图像居中
+            col_2d_1, col_2d_2, col_2d_3 = st.columns([1, 1.5, 1])
+            with col_2d_2:  # 图像放在中间列
+                fig2d, ax = plt.subplots(figsize=(4.5, 4.5))  # 创建二维图像对象，稍微调整长宽比使其看起来更适中
                 ax.set_title(f"n = {n}, l = {l}", fontsize=14, pad=15)  # 在图像上方标注 n, l 值
-                # 绘制二维伪彩色图，使用 'jet' 颜色映射
+                
+                # 绘制二维伪彩色图
                 mesh = ax.pcolormesh(X, Y, Z, cmap='jet', shading='auto', vmin=-np.max(np.abs(Z)), vmax=np.max(np.abs(Z)))
                 
-                # 添加颜色条（颜色长条）
-                cbar = fig2d.colorbar(mesh, ax=ax, fraction=0.046, pad=0.04)  # 生成颜色条并调整大小
-                cbar.set_label('Z Value')  # 颜色条标签
+                # 调窄颜色条（将 fraction 从默认的 0.046 改为 0.03，配合更小的 pad）
+                cbar = fig2d.colorbar(mesh, ax=ax, fraction=0.03, pad=0.04) 
+                cbar.set_label('Z Value', fontsize=10)  # 颜色条标签字体调小
+                cbar.ax.tick_params(labelsize=8)        # 颜色条刻度字体调小
                 
                 # 绘制单位圆边界线
-                circle = plt.Circle((0, 0), 1, color='black', fill=False, linewidth=1)  # 创建圆形对象
-                ax.add_artist(circle)  # 添加到绘图中
+                circle = plt.Circle((0, 0), 1, color='black', fill=False, linewidth=1)
+                ax.add_artist(circle)
                 
-                ax.set_aspect('equal')  # 保证 X 和 Y 轴比例一致
-                ax.axis('off')  # 隐藏坐标轴边框和刻度
+                ax.set_aspect('equal')  # 保证比例一致
+                ax.axis('off')          # 隐藏坐标轴
                 
-                st.pyplot(fig2d)  # 在 Streamlit 中渲染二维图像
-            
-            # 右侧绘制三维图像（使用 Plotly 实现交互）
-            with col_img2:
-                # 创建 Plotly 的三维曲面图对象
+                st.pyplot(fig2d)        # 渲染二维图像
+
+            # --- 2. 绘制三维图像 ---
+            st.write("### Zernike 多项式三维图像")  # 三维图标题
+            # 同样使用三列布局使三维图居中
+            col_3d_1, col_3d_2, col_3d_3 = st.columns([1, 1.5, 1])
+            with col_3d_2:  # 图像放在中间列
+                # 创建 Plotly 三维曲面图
                 fig3d = go.Figure(data=[
                     go.Surface(
-                        x=X, y=Y, z=Z,  # 传入直角坐标网格
-                        colorscale='Jet',  # 使用与二维图一致的颜色映射
-                        colorbar=dict(title='Z Value', len=0.75),  # 三维图的颜色条
-                        showscale=True  # 显示颜色条
+                        x=X, y=Y, z=Z,
+                        colorscale='Jet',
+                        # 调窄三维图的颜色条：设置 thickness 尺寸（默认通常是30）
+                        colorbar=dict(title='Z Value', len=0.6, thickness=15), 
+                        showscale=True
                     )
                 ])
                 
-                # 更新三维图像的布局设置
                 fig3d.update_layout(
-                    title=f"n = {n}, l = {l}",  # 设置标题
+                    title=f"n = {n}, l = {l}",
                     scene=dict(
-                        xaxis_title='X',  # X 轴标题
-                        yaxis_title='Y',  # Y 轴标题
-                        zaxis_title='Z (Amplitude)',  # Z 轴标题
-                        aspectmode='manual',  # 手动设置比例
-                        aspectratio=dict(x=1, y=1, z=0.8),  # 使其看起来像圆盘而非椭圆
-                        camera=dict(  # 设置初始观察视角
-                            eye=dict(x=1.5, y=1.5, z=1.2)  # 摄像机位置
-                        )
+                        xaxis_title='X',
+                        yaxis_title='Y',
+                        zaxis_title='Z (Amplitude)',
+                        aspectmode='manual',
+                        aspectratio=dict(x=1, y=1, z=0.8),
+                        camera=dict(eye=dict(x=1.5, y=1.5, z=1.2))
                     ),
-                    margin=dict(l=0, r=0, b=0, t=30)  # 调整边距，避免留白过多
+                    margin=dict(l=0, r=0, b=0, t=30)
                 )
                 
-                # 在 Streamlit 中渲染三维图像，支持鼠标拖拽交互
+                # 渲染三维图像（use_container_width=True 会自适应中间列的宽度）
                 st.plotly_chart(fig3d, use_container_width=True)
                 
     except ValueError:
